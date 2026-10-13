@@ -68,7 +68,7 @@ function renderWorkout() {
     ${ex.finisher ? `<p class="best" data-best="${ei}"></p>` : `<p class="progression" data-progression="${ei}" hidden></p>`}
     ${ex.note ? `<p class="hint">${escape(ex.note)}</p>` : ''}
     ${ex.logs.map((log, si) => `<div class="set-row ${log.done ? 'is-done' : ''}" data-row="${si}"><span class="set-label">${ex.finisher ? ex.unit === 'sec' ? 'Hold' : 'Set' : `R${si + 1}`}</span>${ex.sides ? `<div class="paired-controls"><label class="side-field"><span>L</span>${inputMarkup(ex, ei, si, 'reps', 'left reps')}</label><label class="side-field"><span>R</span>${inputMarkup(ex, ei, si, 'right', 'right reps')}</label></div>` : `<div class="rep-controls"><button class="step" data-step="-1" data-ex="${ei}" data-set="${si}" aria-label="Decrease ${escape(ex.name)} set ${si + 1}">−</button>${inputMarkup(ex, ei, si, 'reps', ex.unit === 'sec' ? 'seconds' : 'reps')}<button class="step" data-step="1" data-ex="${ei}" data-set="${si}" aria-label="Increase ${escape(ex.name)} set ${si + 1}">+</button></div>`}<button class="done-button" data-done data-ex="${ei}" data-set="${si}" aria-pressed="${log.done}" aria-label="${log.done ? 'Unmark' : 'Complete'} ${escape(ex.name)} set ${si + 1}">✓</button></div>`).join('')}
-    <p class="delta" data-delta="${ei}" hidden></p>${ex.finisher ? `<label class="failure-label"><input type="checkbox" data-failure="${ei}" ${ex.failure ? 'checked' : ''}>${ex.unit === 'sec' ? 'Stopped at form / grip limit' : 'Reached technical failure'}</label>` : ''}</section>`;
+    <p class="delta" data-delta="${ei}" hidden></p></section>`;
   }).join('')}</div>
   <div class="finish-area"><button id="finish-button" class="primary-button">Finish workout <span aria-hidden="true">↗</span></button><p class="footnote" id="finish-note">Log both rounds, then your finisher.<br>Progress saves on this device as you go.</p><button id="discard-button" class="text-button">Reset this session</button></div>`;
   updateWorkoutStatus();
@@ -221,7 +221,7 @@ $('#main').addEventListener('input', event => {
     if (!Number.isInteger(value) || value < 0 || value > 9999) return;
     mutableDraft().exercises[Number(input.dataset.ex)].logs[Number(input.dataset.set)][input.dataset.field] = value;
     updateWorkoutStatus(save());
-  } else if (input.hasAttribute('data-failure')) { mutableDraft().exercises[Number(input.dataset.failure)].failure = input.checked; updateWorkoutStatus(save()); }
+  }
 });
 $('#main').addEventListener('focusout', event => {
   if (event.target.matches('.rep-input')) updateRow(Number(event.target.dataset.ex), Number(event.target.dataset.set));

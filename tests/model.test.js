@@ -100,7 +100,7 @@ test('relative PWA paths, update reload, and complete offline assets', () => {
   for (const icon of manifest.icons) assert.ok(existsSync(new URL(`../${icon.src}`, import.meta.url)));
   const worker = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
   for (const [, asset] of worker.matchAll(/'(\.\/[^']*)'/g)) assert.ok(existsSync(new URL(`../${asset}`, import.meta.url)), asset);
-  assert.match(worker, /workout-shell-v3/);
+  assert.match(worker, /workout-shell-v4/);
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   for (const [, asset] of html.matchAll(/(?:src|href)="(\.\/[^\"]+)"/g)) assert.ok(existsSync(new URL(`../${asset}`, import.meta.url)), asset);
   assert.ok(html.includes('viewport-fit=cover')); assert.ok(html.includes('controllerchange'));
