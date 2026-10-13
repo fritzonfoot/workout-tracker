@@ -56,7 +56,6 @@ function renderWorkout() {
   const session = draft(); const meta = DAY_META[day];
   $('#main').innerHTML = `<section class="hero"><p class="eyebrow">20 lb kettlebell · bar · mat</p><h1>${meta.title}<span style="color:var(--green)">.</span></h1><p class="subheading">${meta.subtitle}</p><p class="session-time">${meta.day} · ${meta.time}</p></section>
   <div class="split-tabs" aria-label="Workout split">${DAYS.map(d => `<button class="split-tab" data-day="${d}" aria-pressed="${d === day}">${DAY_META[d].short}<small>${d === 'push' ? 'Hard' : d === 'pull' ? 'Balanced' : 'Fun'}</small></button>`).join('')}</div>
-  <details class="workout-guide"><summary>2-minute warm-up · how to work the supersets</summary><p>Warm up for 2 minutes with easy movement and practice reps. Do A1 → A2 → rest, then repeat once. Do the same for B1 → B2, then finish.</p><p>Rest 60–90 seconds between rounds; take longer when needed, especially for pull-ups. Leave 1–2 good reps in reserve on strength sets. Good technique comes first.</p></details>
   <div class="session-status"><span id="set-count"></span><span id="save-status"></span></div><div class="progress-track" role="progressbar" aria-label="Completed sets" aria-valuemin="0" aria-valuemax="${totalSets(session)}" aria-valuenow="${completedSets(session)}"><span></span></div>
   <div id="exercise-list">${session.exercises.map((ex, ei) => {
     const previous = previousExercise(state, day, ex);
