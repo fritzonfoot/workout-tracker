@@ -151,3 +151,26 @@ test('workout notes autosave by day, survive reload, and appear escaped in histo
   assert.ok(reloaded.node('#modal-content').innerHTML.includes('&lt;script&gt;'));
   assert.ok(!reloaded.node('#modal-content').innerHTML.includes('<script>'));
 });
+
+test('previous note uses latest same-day session, stays read-only, and hides for a blank latest note', () => {
+  const state = model.newState();
+  const log = (day, id, notes, date) => {
+    state.drafts[day] = model.makeDraft(state, day); state.drafts[day].notes = notes;
+    state.drafts[day].exercises.at(-1).logs[0].done = true;
+    model.finishSession(state, day, id, new Date(date));
+  };
+  log('push', 'mon-old', 'An older Monday note', '2026-10-05T20:00:00Z');
+  log('pull', 'wed', 'Wednesday-only note', '2026-10-07T20:00:00Z');
+  log('push', 'mon-new', 'Try slower reps.\n<Keep form strict>', '2026-10-12T20:00:00Z');
+  const app = boot(JSON.stringify(state)); app.click('', { day: 'push' });
+  let html = app.node('#main').innerHTML;
+  assert.match(html, /Last workout note/); assert.match(html, /2026-10-12T20:00:00.000Z/);
+  assert.match(html, /Try slower reps./); assert.ok(html.includes('&lt;Keep form strict&gt;'));
+  assert.ok(!html.includes('An older Monday note')); assert.ok(!html.includes('Wednesday-only note'));
+  assert.match(html, /<textarea[^>]*><\/textarea>/);
+  app.click('', { day: 'pull' }); assert.match(app.node('#main').innerHTML, /Wednesday-only note/);
+  app.click('', { day: 'legs' }); assert.ok(!app.node('#main').innerHTML.includes('Last workout note'));
+  log('push', 'mon-blank', '   ', '2026-10-19T20:00:00Z');
+  const blank = boot(JSON.stringify(state)); blank.click('', { day: 'push' });
+  assert.ok(!blank.node('#main').innerHTML.includes('Last workout note'));
+});

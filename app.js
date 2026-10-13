@@ -54,6 +54,7 @@ function inputMarkup(ex, ei, si, field, label) {
 }
 function renderWorkout() {
   const session = draft(); const meta = DAY_META[day];
+  const previousSession = state.history.slice().reverse().find(item => item.day === day);
   $('#main').innerHTML = `<section class="hero"><p class="eyebrow">20 lb kettlebell · bar · mat</p><h1>${meta.title}<span style="color:var(--green)">.</span></h1><p class="subheading">${meta.subtitle}</p><p class="session-time">${meta.day} · ${meta.time}</p></section>
   <div class="split-tabs" aria-label="Workout split">${DAYS.map(d => `<button class="split-tab" data-day="${d}" aria-pressed="${d === day}">${DAY_META[d].short}<small>${d === 'push' ? 'Hard' : d === 'pull' ? 'Balanced' : 'Fun'}</small></button>`).join('')}</div>
   <div class="session-status"><span id="set-count"></span><span id="save-status"></span></div><div class="progress-track" role="progressbar" aria-label="Completed sets" aria-valuemin="0" aria-valuemax="${totalSets(session)}" aria-valuenow="${completedSets(session)}"><span></span></div>
@@ -70,6 +71,7 @@ function renderWorkout() {
     ${ex.logs.map((log, si) => `<div class="set-row ${log.done ? 'is-done' : ''}" data-row="${si}"><span class="set-label">${ex.finisher ? ex.unit === 'sec' ? 'Hold' : 'Set' : `R${si + 1}`}</span>${ex.sides ? `<div class="paired-controls"><label class="side-field"><span>L</span>${inputMarkup(ex, ei, si, 'reps', 'left reps')}</label><label class="side-field"><span>R</span>${inputMarkup(ex, ei, si, 'right', 'right reps')}</label></div>` : `<div class="rep-controls"><button class="step" data-step="-1" data-ex="${ei}" data-set="${si}" aria-label="Decrease ${escape(ex.name)} set ${si + 1}">−</button>${inputMarkup(ex, ei, si, 'reps', ex.unit === 'sec' ? 'seconds' : 'reps')}<button class="step" data-step="1" data-ex="${ei}" data-set="${si}" aria-label="Increase ${escape(ex.name)} set ${si + 1}">+</button></div>`}<button class="done-button" data-done data-ex="${ei}" data-set="${si}" aria-pressed="${log.done}" aria-label="${log.done ? 'Unmark' : 'Complete'} ${escape(ex.name)} set ${si + 1}">✓</button></div>`).join('')}
     <p class="delta" data-delta="${ei}" hidden></p></section>`;
   }).join('')}</div>
+  ${previousSession?.notes?.trim() ? `<aside class="previous-note" aria-label="Last workout note"><div><strong>Last workout note</strong><time datetime="${escape(previousSession.finishedAt)}">${formatDate(previousSession.finishedAt)}</time></div><p>${escape(previousSession.notes)}</p></aside>` : ''}
   <div class="workout-notes"><label for="workout-notes">Workout notes <span>optional</span></label><textarea id="workout-notes" rows="3" maxlength="2000" placeholder="How did it feel? Anything to remember next time?">${escape(session.notes || '')}</textarea></div>
   <div class="finish-area"><button id="finish-button" class="primary-button">Finish workout <span aria-hidden="true">↗</span></button><p class="footnote" id="finish-note">Log both rounds, then your finisher.<br>Progress saves on this device as you go.</p><button id="discard-button" class="text-button">Reset this session</button></div>`;
   updateWorkoutStatus();

@@ -22,7 +22,7 @@ Each new session starts with last session’s completed reps. A progress arrow c
 
 Finisher bests use saved, checked efforts for the same day, exercise name, ID and unit. Timed holds use seconds; Friday’s finisher uses reps.
 
-An optional notes box above Finish Workout saves as you type. Notes are attached to that session, shown in History, and included in JSON backups. Older sessions remain valid without notes.
+An optional notes box above Finish Workout saves as you type. Notes are attached to that session, shown in History, and included in JSON backups. The note and date from the last saved session for that same day appear read-only above the new notes box; the section is hidden when that session has no note. Previous notes are never copied into the new entry. Older sessions remain valid without notes.
 
 ## Your data and customizer
 
