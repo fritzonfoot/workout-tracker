@@ -70,6 +70,7 @@ function renderWorkout() {
     ${ex.logs.map((log, si) => `<div class="set-row ${log.done ? 'is-done' : ''}" data-row="${si}"><span class="set-label">${ex.finisher ? ex.unit === 'sec' ? 'Hold' : 'Set' : `R${si + 1}`}</span>${ex.sides ? `<div class="paired-controls"><label class="side-field"><span>L</span>${inputMarkup(ex, ei, si, 'reps', 'left reps')}</label><label class="side-field"><span>R</span>${inputMarkup(ex, ei, si, 'right', 'right reps')}</label></div>` : `<div class="rep-controls"><button class="step" data-step="-1" data-ex="${ei}" data-set="${si}" aria-label="Decrease ${escape(ex.name)} set ${si + 1}">−</button>${inputMarkup(ex, ei, si, 'reps', ex.unit === 'sec' ? 'seconds' : 'reps')}<button class="step" data-step="1" data-ex="${ei}" data-set="${si}" aria-label="Increase ${escape(ex.name)} set ${si + 1}">+</button></div>`}<button class="done-button" data-done data-ex="${ei}" data-set="${si}" aria-pressed="${log.done}" aria-label="${log.done ? 'Unmark' : 'Complete'} ${escape(ex.name)} set ${si + 1}">✓</button></div>`).join('')}
     <p class="delta" data-delta="${ei}" hidden></p></section>`;
   }).join('')}</div>
+  <div class="workout-notes"><label for="workout-notes">Workout notes <span>optional</span></label><textarea id="workout-notes" rows="3" maxlength="2000" placeholder="How did it feel? Anything to remember next time?">${escape(session.notes || '')}</textarea></div>
   <div class="finish-area"><button id="finish-button" class="primary-button">Finish workout <span aria-hidden="true">↗</span></button><p class="footnote" id="finish-note">Log both rounds, then your finisher.<br>Progress saves on this device as you go.</p><button id="discard-button" class="text-button">Reset this session</button></div>`;
   updateWorkoutStatus();
 }
@@ -136,7 +137,7 @@ function finish() {
 function showHistory(id, archived = false) {
   const session = (archived ? state.archivedDrafts : state.history).find(item => item.id === id); if (!session) return;
   showModal(sessionTitle(session), `<p class="modal-copy">${formatDate(session.finishedAt || session.startedAt)} · ${completedSets(session)} sets complete${archived ? ' · unfinished session from before the routine update' : ''}</p>
-  ${session.exercises.map(ex => `<div class="detail-exercise"><h3>${escape(ex.name)}</h3><p>${escape(formatLogs(ex))}${ex.unit === 'sec' ? ' sec' : ex.sides ? ' reps by side' : ' reps'}${ex.finisher && ex.failure && ex.logs.some(log => log.done) ? ex.unit === 'sec' ? '<br>Form / grip limit reached' : '<br>Technical failure reached' : ''}</p></div>`).join('')}${archived ? '' : '<button class="text-button danger" id="delete-session">Delete this workout</button>'}`);
+  ${session.exercises.map(ex => `<div class="detail-exercise"><h3>${escape(ex.name)}</h3><p>${escape(formatLogs(ex))}${ex.unit === 'sec' ? ' sec' : ex.sides ? ' reps by side' : ' reps'}${ex.finisher && ex.failure && ex.logs.some(log => log.done) ? ex.unit === 'sec' ? '<br>Form / grip limit reached' : '<br>Technical failure reached' : ''}</p></div>`).join('')}${session.notes?.trim() ? `<div class="detail-exercise"><h3>Workout notes</h3><p class="saved-notes">${escape(session.notes)}</p></div>` : ''}${archived ? '' : '<button class="text-button danger" id="delete-session">Delete this workout</button>'}`);
   if (archived) return;
   $('#delete-session').onclick = () => confirmAction('Delete this workout?', 'This removes the session from your history on this device.', 'Delete workout', () => { state.history = state.history.filter(item => item.id !== id); save(); render(); toast('Workout deleted.'); });
 }
@@ -214,7 +215,8 @@ $('#main').addEventListener('click', event => {
 });
 $('#main').addEventListener('input', event => {
   const input = event.target;
-  if (input.matches('.rep-input')) {
+  if (input.id === 'workout-notes') { mutableDraft().notes = input.value.slice(0, 2000); updateWorkoutStatus(save()); }
+  else if (input.matches('.rep-input')) {
     const raw = input.value;
     if (raw === '') return;
     const value = Number(raw);

@@ -132,3 +132,22 @@ test('customizer groups exercises and retains a mandatory single-set finisher', 
   assert.equal(JSON.stringify(app.stored()), before);
   assert.match(app.node('#editor-error').textContent, /scheduled finisher/);
 });
+
+test('workout notes autosave by day, survive reload, and appear escaped in history and backups', () => {
+  const app = boot(); app.click('', { day: 'pull' });
+  const notes = 'Felt strong today.\n<script>keep this as text</script>';
+  app.node('#main').events.input({ target: { id: 'workout-notes', value: notes, matches: () => false } });
+  assert.equal(app.stored().drafts.pull.notes, notes);
+  app.click('', { day: 'push' }); assert.ok(!app.node('#main').innerHTML.includes('Felt strong today.'));
+  app.click('', { day: 'pull' }); assert.match(app.node('#main').innerHTML, /Felt strong today/);
+  assert.ok(app.node('#main').innerHTML.includes('&lt;script&gt;'));
+  const reloaded = boot(JSON.stringify(app.stored())); reloaded.click('', { day: 'pull' });
+  assert.match(reloaded.node('#main').innerHTML, /Felt strong today/);
+  reloaded.click('', { done: '', ex: '4', set: '0' }); reloaded.click('finish-button'); reloaded.node('#confirm-action').onclick();
+  assert.equal(reloaded.stored().history[0].notes, notes);
+  assert.equal(model.validateState(JSON.parse(JSON.stringify(reloaded.stored()))).history[0].notes, notes);
+  reloaded.click('', { history: reloaded.stored().history[0].id });
+  assert.match(reloaded.node('#modal-content').innerHTML, /Workout notes/);
+  assert.ok(reloaded.node('#modal-content').innerHTML.includes('&lt;script&gt;'));
+  assert.ok(!reloaded.node('#modal-content').innerHTML.includes('<script>'));
+});

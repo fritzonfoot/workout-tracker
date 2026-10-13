@@ -66,7 +66,7 @@ export function previousExercise(state, day, ex) {
   return null;
 }
 export function makeDraft(state, day, now = new Date()) {
-  return { day, title: DAY_META[day].title, programRevision: PROGRAM_REVISION, startedAt: now.toISOString(), exercises: state.program[day].map(ex => {
+  return { day, title: DAY_META[day].title, programRevision: PROGRAM_REVISION, notes: '', startedAt: now.toISOString(), exercises: state.program[day].map(ex => {
     const previous = previousExercise(state, day, ex);
     return { ...clone(ex), failure: false, logs: Array.from({ length: ex.sets }, (_, index) => {
       const last = previous?.logs[index];
@@ -103,7 +103,7 @@ function validExercise(ex, logged = false) {
   return true;
 }
 const validExercises = (exercises, logged) => Array.isArray(exercises) && exercises.length >= 1 && exercises.length <= 30 && exercises.every(ex => validExercise(ex, logged)) && new Set(exercises.map(ex => ex.id)).size === exercises.length;
-function validSession(session) { return object(session) && DAYS.includes(session.day) && date(session.startedAt) && validExercises(session.exercises, true); }
+function validSession(session) { return object(session) && DAYS.includes(session.day) && date(session.startedAt) && validExercises(session.exercises, true) && (session.notes === undefined || (typeof session.notes === 'string' && session.notes.length <= 2000)); }
 export function validateState(value) {
   if (!object(value) || value.version !== 1 || !object(value.program) || !DAYS.every(day => validExercises(value.program[day], false)) || !object(value.drafts) || !Object.entries(value.drafts).every(([day, draft]) => DAYS.includes(day) && validSession(draft) && draft.day === day) || !Array.isArray(value.history) || value.history.length > 10000 || !value.history.every(session => validSession(session) && typeof session.id === 'string' && session.id.length > 0 && session.id.length < 100 && date(session.finishedAt)) || new Set(value.history.map(session => session.id)).size !== value.history.length) throw new Error('This is not a valid Workout backup. Your current data has not changed.');
   if (value.programRevision !== undefined && (!Number.isInteger(value.programRevision) || value.programRevision < 1 || value.programRevision > PROGRAM_REVISION)) throw new Error('This backup uses an unsupported program version.');

@@ -100,8 +100,19 @@ test('relative PWA paths, update reload, and complete offline assets', () => {
   for (const icon of manifest.icons) assert.ok(existsSync(new URL(`../${icon.src}`, import.meta.url)));
   const worker = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
   for (const [, asset] of worker.matchAll(/'(\.\/[^']*)'/g)) assert.ok(existsSync(new URL(`../${asset}`, import.meta.url)), asset);
-  assert.match(worker, /workout-shell-v4/);
+  assert.match(worker, /workout-shell-v5/);
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   for (const [, asset] of html.matchAll(/(?:src|href)="(\.\/[^\"]+)"/g)) assert.ok(existsSync(new URL(`../${asset}`, import.meta.url)), asset);
   assert.ok(html.includes('viewport-fit=cover')); assert.ok(html.includes('controllerchange'));
+});
+
+test('optional notes preserve old backups and validate new note types and lengths', () => {
+  const state = newState(); state.drafts.legs = makeDraft(state, 'legs');
+  delete state.drafts.legs.notes; assert.doesNotThrow(() => validateState(state));
+  state.drafts.legs.notes = 'A useful note\nwith two lines.'; markFinisher(state.drafts.legs);
+  finishSession(state, 'legs', 'notes-session');
+  assert.equal(state.history[0].notes, 'A useful note\nwith two lines.');
+  assert.deepEqual(validateState(JSON.parse(JSON.stringify(state))), state);
+  state.history[0].notes = 42; assert.throws(() => validateState(state));
+  state.history[0].notes = 'a'.repeat(2001); assert.throws(() => validateState(state));
 });

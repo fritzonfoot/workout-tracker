@@ -22,6 +22,8 @@ Each new session starts with last session’s completed reps. A progress arrow c
 
 Finisher bests use saved, checked efforts for the same day, exercise name, ID and unit. Timed holds use seconds; Friday’s finisher uses reps.
 
+An optional notes box above Finish Workout saves as you type. Notes are attached to that session, shown in History, and included in JSON backups. Older sessions remain valid without notes.
+
 ## Your data and customizer
 
 The update replaces the prior program once per device. Completed history is preserved exactly as logged, including the old day titles. Earlier unfinished sessions move to a separate section of History and remain in backups. They are not counted as completed workouts. Later changes made in the customizer survive reloads and app updates.
