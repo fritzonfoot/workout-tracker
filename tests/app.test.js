@@ -8,6 +8,7 @@ import * as model from '../model.js';
 
 function boot(raw, failWrites = false) {
   const nodes = new Map(), storage = new Map(), windowEvents = {};
+  let reloads = 0;
   if (raw) storage.set(model.STORE_KEY, raw);
   class Node {
     constructor() { this.innerHTML = ''; this.textContent = ''; this.hidden = false; this.value = ''; this.style = {}; this.dataset = {}; this.events = {}; this.attributes = {}; this.classList = { toggle() {} }; }
@@ -26,11 +27,11 @@ function boot(raw, failWrites = false) {
   const document = { querySelector: node, createElement: () => new Node(), body: { append() {} } };
   const window = { scrollTo() {}, addEventListener(name, handler) { windowEvents[name] = handler; } };
   const source = readFileSync(new URL('../app.js', import.meta.url), 'utf8').replace(/^import \{([^}]+)\}[^\n]+\n/, 'const {$1} = model;\n');
-  vm.runInNewContext(source, { model, document, window, navigator: {}, localStorage, crypto, Blob, URL, setTimeout: () => 0, clearTimeout() {}, console });
+  vm.runInNewContext(source, { model, document, window, navigator: {}, localStorage, crypto, Blob, URL, setTimeout: () => 0, clearTimeout() {}, console, location: { reload() { reloads++; } } });
   const button = (id, dataset = {}) => ({ id, dataset, hasAttribute: key => key === 'data-done' && 'done' in dataset, closest() { return this; } });
   const click = (id, dataset) => node('#main').events.click({ target: button(id, dataset) });
   const stored = () => JSON.parse(storage.get(model.STORE_KEY));
-  return { node, click, stored, storage, windowEvents };
+  return { node, click, stored, storage, windowEvents, updateReady: () => window.workoutUpdateReady(), reloadCount: () => reloads };
 }
 test('actual handlers autosave left/right values, switch splits, and finish a partial session', () => {
   const app = boot(); app.click('', { day: 'push' });
@@ -173,4 +174,13 @@ test('previous note uses latest same-day session, stays read-only, and hides for
   log('push', 'mon-blank', '   ', '2026-10-19T20:00:00Z');
   const blank = boot(JSON.stringify(state)); blank.click('', { day: 'push' });
   assert.ok(!blank.node('#main').innerHTML.includes('Last workout note'));
+});
+
+test('update refresh retains saved state and refuses reload when saving has failed', () => {
+  const app = boot(); app.click('', { day: 'push' }); app.click('', { done: '', ex: '0', set: '0' });
+  const before = JSON.stringify(app.stored()); app.updateReady();
+  assert.equal(app.reloadCount(), 1); assert.equal(JSON.stringify(app.stored()), before);
+  const blocked = boot(null, true); blocked.click('', { day: 'push' }); blocked.click('', { done: '', ex: '0', set: '0' });
+  blocked.updateReady(); assert.equal(blocked.reloadCount(), 0);
+  assert.match(blocked.node('#toast').textContent, /Export a backup/);
 });

@@ -97,12 +97,12 @@ test('local weekdays select the correct split', () => {
 test('relative PWA paths, update reload, and complete offline assets', () => {
   const manifest = JSON.parse(readFileSync(new URL('../manifest.webmanifest', import.meta.url)));
   assert.equal(manifest.start_url, './'); assert.equal(manifest.scope, './'); assert.equal(manifest.display, 'standalone');
-  for (const icon of manifest.icons) assert.ok(existsSync(new URL(`../${icon.src}`, import.meta.url)));
+  for (const icon of manifest.icons) assert.ok(existsSync(new URL(`../${icon.src.split('?')[0]}`, import.meta.url)));
   const worker = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
-  for (const [, asset] of worker.matchAll(/'(\.\/[^']*)'/g)) assert.ok(existsSync(new URL(`../${asset}`, import.meta.url)), asset);
-  assert.match(worker, /workout-shell-v6/);
+  for (const [, asset] of worker.matchAll(/'(\.\/[^']*)'/g)) assert.ok(existsSync(new URL(`../${asset.split('?')[0]}`, import.meta.url)), asset);
+  assert.match(worker, /workout-shell-v7/);
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  for (const [, asset] of html.matchAll(/(?:src|href)="(\.\/[^\"]+)"/g)) assert.ok(existsSync(new URL(`../${asset}`, import.meta.url)), asset);
+  for (const [, asset] of html.matchAll(/(?:src|href)="(\.\/[^\"]+)"/g)) assert.ok(existsSync(new URL(`../${asset.split('?')[0]}`, import.meta.url)), asset);
   assert.ok(html.includes('viewport-fit=cover')); assert.ok(html.includes('controllerchange'));
 });
 

@@ -36,6 +36,6 @@ Data is stored locally on your device, not sent to GitHub, and does not sync acr
 
 No build step or dependencies. Run `npm test` for the data, migration, app event-handler and offline-asset checks. Serve the directory over HTTP locally or HTTPS in production. All asset paths are relative for GitHub Pages project subpaths.
 
-Increment the cache version in `sw.js` when shell assets change. The updated HTML reloads once when an existing service worker switches to a fully cached new shell. Browser storage is retained.
+Increment the cache version in `sw.js` and the version query on HTML, JS imports and cached asset URLs when shell assets change. Offline installation uses `Request` with `cache: reload` to bypass stale browser HTTP-cache entries. Navigation uses `cache: no-store`, and the worker reads only its own version’s cache. Settings includes Check for updates; foreground and reconnect also request service worker updates. The updated HTML reloads once when an existing service worker switches to a fully cached new shell. Browser storage is retained.
 
 The public repository contains only application code and default routines. Never commit personal workout backups.

@@ -1,4 +1,4 @@
-import { STORE_KEY, DAYS, DAY_META, DEFAULT_PROGRAM, clone, newState, suggestedDay, previousExercise, makeDraft, completedSets, totalSets, finishSession, exerciseDelta, formatLogs, validateState, migrateState, PROGRAM_REVISION, sessionTitle, finishersComplete, finisherBest, atTopOfRange } from './model.js';
+import { STORE_KEY, DAYS, DAY_META, DEFAULT_PROGRAM, clone, newState, suggestedDay, previousExercise, makeDraft, completedSets, totalSets, finishSession, exerciseDelta, formatLogs, validateState, migrateState, PROGRAM_REVISION, sessionTitle, finishersComplete, finisherBest, atTopOfRange } from './model.js?v=7';
 
 const $ = selector => document.querySelector(selector);
 const escape = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -146,11 +146,12 @@ function showHistory(id, archived = false) {
 function showSettings() {
   showModal('Keep it simple.', `<div class="settings-group"><h3>Your program</h3><div class="button-row">${DAYS.map(d => `<button class="secondary-button" data-edit="${d}">${DAY_META[d].day}</button>`).join('')}</div><p>Edit names, sets, rep targets, or exercise variations. Your completed history stays intact.</p></div>
   <div class="settings-group"><h3>Your data</h3><div class="button-row"><button class="secondary-button" id="export-button">Export backup ↗</button><button class="secondary-button" id="import-button">Restore backup</button><input type="file" id="import-file" accept="application/json,.json" hidden></div><p>No account. No sync. Backups include your program, unfinished sessions, and full history. Restore replaces the data on this device.</p></div>
-  <div class="settings-group"><h3>On your Home Screen</h3><p>In Safari, open Share → Add to Home Screen. After the first online load, your installed tracker works offline.</p><p id="offline-status">Checking offline support…</p></div><div class="settings-group"><p>Workout v2 · made for your 20 lb kettlebell, pull-up bar & yoga mat.</p></div>`);
+  <div class="settings-group"><h3>On your Home Screen</h3><p>In Safari, open Share → Add to Home Screen. After the first online load, your installed tracker works offline.</p><p id="offline-status">Checking offline support…</p><button class="secondary-button" id="check-update-button">Check for updates</button></div><div class="settings-group"><p>Workout v7 · made for your 20 lb kettlebell, pull-up bar & yoga mat.</p></div>`);
   $('#export-button').onclick = exportBackup;
   $('#import-button').onclick = () => $('#import-file').click();
   $('#import-file').onchange = event => importBackup(event.target.files[0]);
   $('#offline-status').textContent = offlineStatus;
+  $('#check-update-button').onclick = () => checkForUpdates(true);
 }
 function exportBackup() {
   const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
@@ -252,13 +253,35 @@ window.addEventListener('storage', event => {
 });
 
 let offlineStatus = 'Offline support is unavailable in this browser.';
+let appRegistration = null;
+let lastUpdateCheck = 0;
+window.workoutUpdateReady = () => {
+  if (lastSaveSucceeded && !storageBlocked) location.reload();
+  else toast('Update ready. Export a backup before reloading.');
+};
+async function checkForUpdates(manual = false) {
+  if (!('serviceWorker' in navigator)) { if (manual) toast('Updates are unavailable in this browser.'); return; }
+  if (!manual && Date.now() - lastUpdateCheck < 30000) return;
+  lastUpdateCheck = Date.now();
+  if (manual) toast('Checking for updates…');
+  try {
+    if (!appRegistration) appRegistration = await navigator.serviceWorker.register('./sw.js', { scope: './', updateViaCache: 'none' });
+    await appRegistration.update();
+    if (appRegistration.waiting) appRegistration.waiting.postMessage({ type: 'SKIP_WAITING' });
+    if (manual) toast(appRegistration.installing || appRegistration.waiting ? 'Downloading update. The app will refresh when ready.' : 'No new update found. This is Workout v7.');
+  } catch { if (manual) toast('Could not check for updates. Try again while online.'); }
+}
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js', { scope: './' }).then(async () => {
+  navigator.serviceWorker.register('./sw.js', { scope: './', updateViaCache: 'none' }).then(async registration => {
+    appRegistration = registration;
     await navigator.serviceWorker.ready;
     offlineStatus = 'Offline ready. Your workouts stay on this device.';
     if ($('#offline-status')) $('#offline-status').textContent = offlineStatus;
+    checkForUpdates();
   }).catch(() => {
     offlineStatus = 'Offline setup failed. You can still log workouts online; reopen the app online to retry.';
     if ($('#offline-status')) $('#offline-status').textContent = offlineStatus;
   });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkForUpdates(); });
+  window.addEventListener('online', () => checkForUpdates());
 }
