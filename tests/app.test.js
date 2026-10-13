@@ -25,7 +25,7 @@ function boot(raw, failWrites = false) {
   const localStorage = { getItem: key => storage.get(key) ?? null, setItem: (key, value) => { if (failWrites) throw new Error('Quota'); storage.set(key, value); } };
   const document = { querySelector: node, createElement: () => new Node(), body: { append() {} } };
   const window = { scrollTo() {}, addEventListener(name, handler) { windowEvents[name] = handler; } };
-  const source = readFileSync(new URL('../app.js', import.meta.url), 'utf8').replace(/^import[^\n]+\n/, 'const { STORE_KEY, DAYS, DAY_META, DEFAULT_PROGRAM, clone, newState, suggestedDay, previousExercise, makeDraft, completedSets, totalSets, finishSession, exerciseDelta, formatLogs, validateState } = model;\n');
+  const source = readFileSync(new URL('../app.js', import.meta.url), 'utf8').replace(/^import \{([^}]+)\}[^\n]+\n/, 'const {$1} = model;\n');
   vm.runInNewContext(source, { model, document, window, navigator: {}, localStorage, crypto, Blob, URL, setTimeout: () => 0, clearTimeout() {}, console });
   const button = (id, dataset = {}) => ({ id, dataset, hasAttribute: key => key === 'data-done' && 'done' in dataset, closest() { return this; } });
   const click = (id, dataset) => node('#main').events.click({ target: button(id, dataset) });
@@ -36,19 +36,19 @@ test('actual handlers autosave left/right values, switch splits, and finish a pa
   const app = boot(); app.click('', { day: 'push' });
   app.click('', { step: '1', ex: '0', set: '0' });
   app.click('', { done: '', ex: '0', set: '0' });
-  const input = { value: '11', dataset: { ex: '1', set: '0', field: 'right' }, matches: selector => selector === '.rep-input' };
+  const input = { value: '11', dataset: { ex: '0', set: '0', field: 'reps' }, matches: selector => selector === '.rep-input' };
   app.node('#main').events.input({ target: input });
   app.click('', { done: '', ex: '1', set: '0' });
-  assert.equal(app.stored().drafts.push.exercises[0].logs[0].reps, 9);
-  assert.equal(app.stored().drafts.push.exercises[1].logs[0].right, 11);
+  assert.equal(app.stored().drafts.push.exercises[0].logs[0].reps, 11);
+  assert.equal(app.stored().drafts.push.exercises[0].logs[0].right, 8);
   app.click('', { day: 'pull' }); app.click('', { done: '', ex: '0', set: '0' });
-  app.click('', { day: 'push' }); app.click('finish-button');
+  app.click('', { day: 'push' }); app.click('', { done: '', ex: '4', set: '0' }); app.click('finish-button');
   assert.equal(app.node('#modal').open, true); app.node('#confirm-action').onclick();
-  assert.equal(app.stored().history.length, 1); assert.equal(model.completedSets(app.stored().history[0]), 2);
+  assert.equal(app.stored().history.length, 1); assert.equal(model.completedSets(app.stored().history[0]), 3);
   assert.ok(app.stored().drafts.pull); assert.equal(app.stored().drafts.push, undefined);
-  app.node('#history-nav').onclick(); assert.match(app.node('#main').innerHTML, /2 \/ 19 sets/);
+  app.node('#history-nav').onclick(); assert.match(app.node('#main').innerHTML, /3 \/ 9 sets/);
   const reloaded = boot(JSON.stringify(app.stored())); reloaded.click('', { day: 'push' });
-  assert.match(reloaded.node('#main').innerHTML, /Last: 9 · — · —/);
+  assert.match(reloaded.node('#main').innerHTML, /Last: 11L \/ 8R · —/);
 });
 test('invalid numeric entries do not corrupt a draft', () => {
   const app = boot(); app.click('', { day: 'push' }); app.click('', { done: '', ex: '0', set: '0' });
@@ -68,7 +68,7 @@ test('backup restore requires confirmation and restores unfinished sessions', as
   assert.equal(app.storage.has(model.STORE_KEY), false);
   app.node('#confirm-action').onclick();
   assert.deepEqual(app.stored(), backup);
-  app.click('', { day: 'legs' }); assert.equal(app.node('#set-count').textContent, '1 / 23 sets complete');
+  app.click('', { day: 'legs' }); assert.equal(app.node('#set-count').textContent, '1 / 9 sets complete');
 });
 test('malformed backup leaves current data unchanged', async () => {
   const app = boot(); app.click('', { day: 'push' }); app.click('', { done: '', ex: '0', set: '0' });
@@ -81,4 +81,54 @@ test('program content is escaped before insertion into HTML', () => {
   const state = model.newState(); state.program.push[0].name = '<script>alert(1)</script>';
   const app = boot(JSON.stringify(state)); app.click('', { day: 'push' });
   assert.match(app.node('#main').innerHTML, /&lt;script&gt;/); assert.ok(!app.node('#main').innerHTML.includes('<script>alert'));
+});
+
+test('finish button requires the finisher and updates bests in seconds', () => {
+  const app = boot(); app.click('', { day: 'pull' });
+  app.click('', { done: '', ex: '0', set: '0' });
+  assert.equal(app.node('#finish-button').disabled, true);
+  app.node('#main').events.input({ target: { value: '42', dataset: { ex: '4', set: '0', field: 'reps' }, matches: () => true } });
+  app.click('', { done: '', ex: '4', set: '0' });
+  assert.equal(app.node('#finish-button').disabled, false);
+  assert.match(app.node('[data-best="4"]').textContent, /New best today: 42 sec/);
+  app.click('finish-button'); app.node('#confirm-action').onclick();
+  assert.match(app.node('[data-best="4"]').textContent, /Personal best: 42 sec/);
+});
+test('new program loads on existing devices without discarding old records', () => {
+  const legacy = model.newState(); delete legacy.programRevision; delete legacy.archivedDrafts;
+  legacy.program.push[0].name = 'Old custom routine';
+  legacy.drafts.push = model.makeDraft(legacy, 'push'); delete legacy.drafts.push.title; delete legacy.drafts.push.programRevision;
+  legacy.drafts.push.exercises[0].logs[0].done = true;
+  legacy.history.push({ ...structuredClone(legacy.drafts.push), id: 'prior-session', finishedAt: '2026-10-12T20:00:00Z' });
+  const app = boot(JSON.stringify(legacy)), stored = app.stored();
+  assert.deepEqual(stored.history, legacy.history);
+  assert.deepEqual(stored.archivedDrafts[0].exercises, legacy.drafts.push.exercises);
+  assert.equal(stored.program.push[0].name, 'Bulgarian Split Squats');
+  app.node('#history-nav').onclick();
+  assert.match(app.node('#main').innerHTML, /Earlier unfinished sessions/); assert.match(app.node('#main').innerHTML, /Push day/);
+  stored.program.push[0].name = 'My current customized exercise';
+  const reloaded = boot(JSON.stringify(stored)); reloaded.click('', { day: 'push' });
+  assert.match(reloaded.node('#main').innerHTML, /My current customized exercise/);
+});
+test('customizer groups exercises and retains a mandatory single-set finisher', () => {
+  const app = boot(); app.node('#settings-button').onclick();
+  app.node('#modal-content').events.click({ target: { dataset: { edit: 'push' }, closest() { return this; }, hasAttribute() { return false; } } });
+  const editing = model.newState().program.push;
+  const fields = editing.map(ex => ({ querySelector(selector) {
+    const key = selector.match(/"([^\"]+)"/)[1];
+    return { value: key === 'sets' ? String(ex.sets) : ex[key], checked: !!ex.sides };
+  } }));
+  app.node('#program-editor').querySelectorAll = selector => selector === '.edit-exercise' ? fields : [];
+  app.node('#program-editor').onsubmit({ preventDefault() {} });
+  assert.equal(app.stored().program.push.at(-1).group, 'finisher');
+  assert.equal(app.stored().program.push.at(-1).initial, 0);
+  assert.equal(app.stored().program.push.at(-1).sets, 1);
+  app.node('#settings-button').onclick();
+  app.node('#modal-content').events.click({ target: { dataset: { edit: 'push' }, closest() { return this; }, hasAttribute() { return false; } } });
+  editing.at(-1).group = 'B';
+  app.node('#program-editor').querySelectorAll = selector => selector === '.edit-exercise' ? fields : [];
+  const before = JSON.stringify(app.stored());
+  app.node('#program-editor').onsubmit({ preventDefault() {} });
+  assert.equal(JSON.stringify(app.stored()), before);
+  assert.match(app.node('#editor-error').textContent, /scheduled finisher/);
 });

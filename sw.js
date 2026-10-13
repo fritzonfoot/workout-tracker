@@ -1,4 +1,4 @@
-const CACHE = 'workout-shell-v1';
+const CACHE = 'workout-shell-v2';
 const ROOT = new URL('./', self.location.href);
 const ASSETS = ['./', './index.html', './styles.css', './app.js', './model.js', './manifest.webmanifest', './icons/icon.svg', './icons/icon-192.png', './icons/icon-512.png'].map(path => new URL(path, ROOT).href);
 self.addEventListener('install', event => {
